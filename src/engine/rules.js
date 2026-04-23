@@ -11,6 +11,7 @@
  * Structure per rule:
  *   id          – unique identifier
  *   set         – grouping label for logging
+ *   cf          – Certainty Factor assigned by the expert
  *   description – human-readable explanation (Bahasa Indonesia)
  *   conditions  – object whose keys must ALL match working memory
  *   result      – object to merge into working memory when rule fires
@@ -21,6 +22,7 @@ const ideRules = [
   {
     id: "R13",
     set: "Ide & Masalah",
+    cf: 0.9,
     description:
       "Masalah jelas, solusi sesuai, dan memiliki nilai unik → Ide & Masalah Baik",
     conditions: {
@@ -33,6 +35,7 @@ const ideRules = [
   {
     id: "R14",
     set: "Ide & Masalah",
+    cf: 0.8,
     description:
       "Masalah jelas, solusi sesuai, tetapi tidak ada nilai unik → Ide & Masalah Kurang",
     conditions: {
@@ -45,6 +48,7 @@ const ideRules = [
   {
     id: "R15",
     set: "Ide & Masalah",
+    cf: 0.9,
     description:
       "Masalah jelas tetapi solusi tidak sesuai → Ide & Masalah Kurang",
     conditions: {
@@ -56,6 +60,7 @@ const ideRules = [
   {
     id: "R16",
     set: "Ide & Masalah",
+    cf: 1.0,
     description: "Masalah tidak jelas → Ide & Masalah Kurang",
     conditions: {
       kejelasan_masalah: "tidak_jelas",
@@ -69,6 +74,7 @@ const pasarRules = [
   {
     id: "R17",
     set: "Pasar & Kompetitor",
+    cf: 0.8,
     description:
       "Target pasar jelas tetapi kompetitor tinggi → Pasar & Kompetitor Kurang",
     conditions: {
@@ -80,6 +86,7 @@ const pasarRules = [
   {
     id: "R18",
     set: "Pasar & Kompetitor",
+    cf: 0.9,
     description:
       "Target pasar jelas dan kompetitor rendah → Pasar & Kompetitor Baik",
     conditions: {
@@ -91,6 +98,7 @@ const pasarRules = [
   {
     id: "R19",
     set: "Pasar & Kompetitor",
+    cf: 1.0,
     description: "Target pasar tidak jelas → Pasar & Kompetitor Kurang",
     conditions: {
       target_pasar: "tidak_jelas",
@@ -104,6 +112,7 @@ const timRules = [
   {
     id: "R20",
     set: "Tim & Sumber Daya",
+    cf: 0.9,
     description:
       "Skill tim cukup dan memiliki pengalaman → Tim & Sumber Daya Baik",
     conditions: {
@@ -115,6 +124,7 @@ const timRules = [
   {
     id: "R21",
     set: "Tim & Sumber Daya",
+    cf: 0.7,
     description:
       "Skill tim cukup, tanpa pengalaman, tetapi modal cukup → Tim & Sumber Daya Baik",
     conditions: {
@@ -127,6 +137,7 @@ const timRules = [
   {
     id: "R22",
     set: "Tim & Sumber Daya",
+    cf: 0.8,
     description:
       "Skill tim cukup, tanpa pengalaman, dan modal tidak cukup → Tim & Sumber Daya Kurang",
     conditions: {
@@ -139,6 +150,7 @@ const timRules = [
   {
     id: "R23",
     set: "Tim & Sumber Daya",
+    cf: 1.0,
     description: "Skill tim kurang → Tim & Sumber Daya Kurang",
     conditions: {
       skill_tim: "kurang",
@@ -152,6 +164,7 @@ const modelBisnisRules = [
   {
     id: "R24",
     set: "Model Bisnis",
+    cf: 0.9,
     description:
       "Monetisasi jelas dan model bisnis berkelanjutan → Model Bisnis Baik",
     conditions: {
@@ -163,6 +176,7 @@ const modelBisnisRules = [
   {
     id: "R25",
     set: "Model Bisnis",
+    cf: 0.8,
     description:
       "Monetisasi jelas tetapi model bisnis tidak berkelanjutan → Model Bisnis Kurang",
     conditions: {
@@ -174,6 +188,7 @@ const modelBisnisRules = [
   {
     id: "R26",
     set: "Model Bisnis",
+    cf: 1.0,
     description: "Monetisasi tidak jelas → Model Bisnis Kurang",
     conditions: {
       kejelasan_monetisasi: "tidak_jelas",
@@ -195,6 +210,7 @@ export const decisionRules = [
   {
     id: "R1",
     set: "Keputusan Akhir",
+    cf: 0.9,
     description: "Semua aspek baik → Layak",
     conditions: {
       ide_masalah: "baik",
@@ -207,6 +223,7 @@ export const decisionRules = [
   {
     id: "R2",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, pasar baik, tim baik, tetapi model bisnis kurang → Cukup Layak",
     conditions: {
@@ -220,6 +237,7 @@ export const decisionRules = [
   {
     id: "R3",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, pasar baik, model bisnis baik, tetapi tim kurang → Cukup Layak",
     conditions: {
@@ -233,6 +251,7 @@ export const decisionRules = [
   {
     id: "R4",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, tim baik, model bisnis baik, tetapi pasar kurang → Cukup Layak",
     conditions: {
@@ -246,6 +265,7 @@ export const decisionRules = [
   {
     id: "R5",
     set: "Keputusan Akhir",
+    cf: 0.7,
     description:
       "Pasar baik, tim baik, model bisnis baik, tetapi ide kurang → Cukup Layak",
     conditions: {
@@ -259,6 +279,7 @@ export const decisionRules = [
   {
     id: "R6",
     set: "Keputusan Akhir",
+    cf: 0.6,
     description:
       "Ide baik, tetapi pasar, tim, dan model bisnis semua kurang → Cukup Layak",
     conditions: {
@@ -272,6 +293,7 @@ export const decisionRules = [
   {
     id: "R7",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, tim baik, tetapi pasar dan model bisnis kurang → Tidak Layak",
     conditions: {
@@ -285,6 +307,7 @@ export const decisionRules = [
   {
     id: "R8",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, pasar baik, tetapi tim dan model bisnis kurang → Tidak Layak",
     conditions: {
@@ -298,6 +321,7 @@ export const decisionRules = [
   {
     id: "R9",
     set: "Keputusan Akhir",
+    cf: 0.8,
     description:
       "Ide baik, model bisnis baik, tetapi pasar dan tim kurang → Tidak Layak",
     conditions: {
@@ -311,6 +335,7 @@ export const decisionRules = [
   {
     id: "R10",
     set: "Keputusan Akhir",
+    cf: 0.9,
     description:
       "Ide kurang, pasar baik, tetapi model bisnis kurang → Tidak Layak (tim diabaikan)",
     conditions: {
@@ -323,6 +348,7 @@ export const decisionRules = [
   {
     id: "R11",
     set: "Keputusan Akhir",
+    cf: 0.85,
     description:
       "Ide kurang, pasar baik, model bisnis baik, tetapi tim kurang → Tidak Layak",
     conditions: {
@@ -336,6 +362,7 @@ export const decisionRules = [
   {
     id: "R12",
     set: "Keputusan Akhir",
+    cf: 1.0,
     description:
       "Ide kurang dan pasar kurang → Tidak Layak (tim & model diabaikan)",
     conditions: {

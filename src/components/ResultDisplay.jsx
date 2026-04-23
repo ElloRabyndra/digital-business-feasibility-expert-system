@@ -50,6 +50,8 @@ const VERDICT_CONFIG = {
     titleColor: "text-blue-700",
     cardBg: "bg-blue-50 border-blue-200",
     badgeClass: "bg-blue-100 text-blue-700 border-2 border-blue-200",
+    barColor: "bg-blue-500",
+    barTrack: "bg-blue-100",
     description:
       "Ide bisnis digital Anda dinilai layak untuk dikembangkan. Semua aspek menunjukkan kesiapan yang baik. Lanjutkan ke tahap validasi dan pengembangan MVP!",
   },
@@ -60,6 +62,8 @@ const VERDICT_CONFIG = {
     titleColor: "text-amber-700",
     cardBg: "bg-amber-50 border-amber-200",
     badgeClass: "bg-amber-100 text-amber-700 border-2 border-amber-200",
+    barColor: "bg-amber-500",
+    barTrack: "bg-amber-100",
     description:
       "Ide bisnis digital Anda cukup layak, namun masih ada aspek yang perlu diperbaiki. Perkuat aspek yang kurang sebelum melanjutkan ke tahap pengembangan.",
   },
@@ -70,6 +74,8 @@ const VERDICT_CONFIG = {
     titleColor: "text-red-700",
     cardBg: "bg-red-50 border-red-200",
     badgeClass: "bg-red-100 text-red-700 border-2 border-red-200",
+    barColor: "bg-red-500",
+    barTrack: "bg-red-100",
     description:
       "Ide bisnis digital Anda saat ini belum layak untuk dikembangkan. Disarankan untuk mengevaluasi ulang aspek-aspek yang masih kurang secara menyeluruh.",
   },
@@ -78,6 +84,7 @@ const VERDICT_CONFIG = {
 export default function ResultDisplay({ result, onRetry }) {
   const verdict = VERDICT_CONFIG[result.kelayakan_ide] || VERDICT_CONFIG["Tidak Layak"];
   const VerdictIcon = verdict.Icon;
+  const cfPercent = Math.round((result.cf_kelayakan || 0) * 100);
 
   return (
     <section className="max-w-3xl mx-auto px-10 sm:px-6 py-8 animate-fade-in">
@@ -102,6 +109,24 @@ export default function ResultDisplay({ result, onRetry }) {
           </div>
         </div>
 
+        {/* CF Progress Bar */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-gray-500">
+              Tingkat Kepastian (Certainty Factor)
+            </span>
+            <span className={`text-sm font-bold ${verdict.titleColor}`}>
+              {cfPercent}%
+            </span>
+          </div>
+          <div className={`w-full h-2.5 rounded-full ${verdict.barTrack}`}>
+            <div
+              className={`h-2.5 rounded-full ${verdict.barColor} transition-all duration-700 ease-out`}
+              style={{ width: `${cfPercent}%` }}
+            />
+          </div>
+        </div>
+
         <p className="text-sm text-gray-500 leading-relaxed mt-4">
           {verdict.description}
         </p>
@@ -117,7 +142,9 @@ export default function ResultDisplay({ result, onRetry }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         {ASPECT_META.map((meta, index) => {
-          const value = result.aspek[meta.key];
+          const aspekData = result.aspek[meta.key];
+          const value = aspekData?.value ?? aspekData;
+          const cfAspek = aspekData?.cf ?? 0;
           const isBaik = value === "baik";
           const AspectIcon = meta.Icon;
 
@@ -134,12 +161,17 @@ export default function ResultDisplay({ result, onRetry }) {
                     {meta.label}
                   </h4>
                 </div>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
-                    ${isBaik ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
-                >
-                  {isBaik ? "Baik" : "Kurang"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-semibold text-gray-400">
+                    CF: {cfAspek.toFixed(2)}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+                      ${isBaik ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {isBaik ? "Baik" : "Kurang"}
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
                 {isBaik ? meta.desc_baik : meta.desc_kurang}

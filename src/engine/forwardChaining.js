@@ -1,32 +1,42 @@
 /**
- * Forward Chaining Inference Engine
+ * Forward Chaining Inference Engine (with Certainty Factor)
  *
  * How it works:
  *
  * 1. User input (facts) is loaded into Working Memory.
+ *    Each fact is stored as { value, cf } where cf is looked up
+ *    from the expert-defined factCF table.
  *
  * 2. PHASE 1 — Aspect Evaluation
  *    The engine iterates through aspect rules (Sets 2-5).
  *    For each rule, it checks whether ALL conditions are
  *    satisfied by the current working memory.
  *    When a rule fires, its result is merged into working
- *    memory, producing intermediate aspect values.
+ *    memory, producing intermediate aspect values with CF:
+ *      CF(conclusion) = min(CF of all premises) × CF(RULE)
  *
  * 3. PHASE 2 — Decision Evaluation
  *    The engine iterates through decision rules (Set 1).
  *    These rules use the intermediate aspect values from
  *    Phase 1. The FIRST matching rule determines the
- *    final feasibility decision.
+ *    final feasibility decision, with its own CF.
  *
- * 4. Every fired rule is recorded in the inference log
+ * 4. If multiple rules produce the same conclusion, their CFs
+ *    are combined using CFCOMBINE:
+ *      Both > 0:  CF1 + CF2 × (1 - CF1)
+ *      One  < 0:  (CF1 + CF2) / (1 - min(|CF1|, |CF2|))
+ *      Both < 0:  CF1 + CF2 × (1 + CF1)
+ *
+ * 5. Every fired rule is recorded in the inference log
  *    for transparency and debugging.
  */
 
 import { aspectRules, decisionRules } from "./rules.js";
+import { factCF } from "../data/cfValues.js";
 
 export class ForwardChainingEngine {
   constructor() {
-    /** @type {Object<string, string>} fact store */
+    /** @type {Object<string, {value: string, cf: number}>} fact store */
     this.workingMemory = {};
 
     /** @type {Array<Object>} ordered log of fired rules */
@@ -37,17 +47,22 @@ export class ForwardChainingEngine {
 
   /**
    * Load user input as initial facts into working memory.
-   * Clears any previous state.
-   * @param {Object<string, string>} facts
+   * Clears any previous state. Looks up CF from factCF table.
+   * @param {Object<string, string>} facts  e.g. { kejelasan_masalah: "jelas", ... }
    */
   setFacts(facts) {
-    this.workingMemory = { ...facts };
+    this.workingMemory = {};
     this.log = [];
+
+    for (const [key, value] of Object.entries(facts)) {
+      const cfValue = factCF[key]?.[value] ?? 1.0;
+      this.workingMemory[key] = { value, cf: cfValue };
+    }
   }
 
   /**
    * Run full forward chaining evaluation.
-   * @returns {{ aspek: Object, kelayakan_ide: string, log: Array }}
+   * @returns {{ aspek: Object, kelayakan_ide: string, cf_kelayakan: number, log: Array }}
    */
   evaluate() {
     this._logPhase("FASE 1: Evaluasi Aspek (Atribut → Aspek)");
@@ -79,7 +94,7 @@ export class ForwardChainingEngine {
 
   /**
    * Returns a snapshot of the current working memory.
-   * @returns {Object<string, string>}
+   * @returns {Object<string, {value: string, cf: number}>}
    */
   getWorkingMemory() {
     return { ...this.workingMemory };
@@ -89,19 +104,36 @@ export class ForwardChainingEngine {
 
   /**
    * Check if all conditions of a rule match working memory.
-   * A rule with fewer conditions acts as a wildcard for unspecified attributes.
+   * Working memory now stores { value, cf }, so compare against .value.
    * @param {Object<string, string>} conditions
    * @returns {boolean}
    */
   _matchConditions(conditions) {
     return Object.entries(conditions).every(
-      ([key, value]) => this.workingMemory[key] === value
+      ([key, value]) => this.workingMemory[key]?.value === value
     );
   }
 
   /**
-   * Try to fire a single rule. If conditions match, merge result
-   * into working memory and log the event.
+   * Combine two CF values using the standard CFCOMBINE formula.
+   * @param {number} cf1
+   * @param {number} cf2
+   * @returns {number}
+   */
+  _cfCombine(cf1, cf2) {
+    if (cf1 >= 0 && cf2 >= 0) {
+      return cf1 + cf2 * (1 - cf1);
+    } else if (cf1 < 0 && cf2 < 0) {
+      return cf1 + cf2 * (1 + cf1);
+    } else {
+      return (cf1 + cf2) / (1 - Math.min(Math.abs(cf1), Math.abs(cf2)));
+    }
+  }
+
+  /**
+   * Try to fire a single rule. If conditions match, compute CF,
+   * merge result into working memory (with CFCOMBINE if needed),
+   * and log the event.
    * @param {Object} rule
    * @returns {boolean} whether the rule fired
    */
@@ -109,7 +141,26 @@ export class ForwardChainingEngine {
     const matched = this._matchConditions(rule.conditions);
 
     if (matched) {
-      Object.assign(this.workingMemory, rule.result);
+      // Collect CF values of all premises involved in this rule
+      const premiseCFs = Object.keys(rule.conditions).map(
+        (key) => this.workingMemory[key].cf
+      );
+
+      // CF(conclusion) = min(CF premises) × CF(rule)
+      const cfPremises = Math.min(...premiseCFs);
+      const cfResult = cfPremises * rule.cf;
+
+      // Merge result into working memory
+      for (const [key, value] of Object.entries(rule.result)) {
+        if (this.workingMemory[key] !== undefined) {
+          // Combine with existing CF if conclusion already exists
+          const existingCF = this.workingMemory[key].cf;
+          const combinedCF = this._cfCombine(existingCF, cfResult);
+          this.workingMemory[key] = { value, cf: combinedCF };
+        } else {
+          this.workingMemory[key] = { value, cf: cfResult };
+        }
+      }
 
       this.log.push({
         type: "rule_fired",
@@ -118,6 +169,10 @@ export class ForwardChainingEngine {
         description: rule.description,
         conditions: { ...rule.conditions },
         result: { ...rule.result },
+        cfRule: rule.cf,
+        cfPremises,
+        cfPremiseDetails: premiseCFs,
+        cfResult,
       });
     }
 
@@ -137,17 +192,25 @@ export class ForwardChainingEngine {
 
   /**
    * Assemble the final result object.
-   * @returns {{ aspek: Object, kelayakan_ide: string, log: Array }}
+   * @returns {{ aspek: Object, kelayakan_ide: string, cf_kelayakan: number, log: Array }}
    */
   _buildResult() {
+    const getAspek = (key) => {
+      const entry = this.workingMemory[key];
+      if (!entry) return { value: null, cf: 0 };
+      return { value: entry.value, cf: entry.cf };
+    };
+
     return {
       aspek: {
-        ide_masalah: this.workingMemory.ide_masalah || null,
-        pasar_kompetitor: this.workingMemory.pasar_kompetitor || null,
-        tim_sumber_daya: this.workingMemory.tim_sumber_daya || null,
-        model_bisnis: this.workingMemory.model_bisnis || null,
+        ide_masalah: getAspek("ide_masalah"),
+        pasar_kompetitor: getAspek("pasar_kompetitor"),
+        tim_sumber_daya: getAspek("tim_sumber_daya"),
+        model_bisnis: getAspek("model_bisnis"),
       },
-      kelayakan_ide: this.workingMemory.kelayakan_ide || "Tidak Diketahui",
+      kelayakan_ide:
+        this.workingMemory.kelayakan_ide?.value || "Tidak Diketahui",
+      cf_kelayakan: this.workingMemory.kelayakan_ide?.cf || 0,
       log: this.getLog(),
     };
   }

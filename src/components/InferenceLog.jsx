@@ -67,6 +67,25 @@ export default function InferenceLog({ log }) {
                       ))}
                     </p>
                   </div>
+
+                  {/* CF calculation details */}
+                  {entry.cfRule !== undefined && (
+                    <div className="ml-8 mt-2 px-2.5 py-1.5 bg-amber-50 border border-amber-100 rounded text-[11px] text-amber-800 font-mono">
+                      <span className="text-amber-500 font-sans font-semibold">CF: </span>
+                      CF Rule: {entry.cfRule}
+                      {" | "}
+                      CF Premis: min(
+                      {entry.cfPremiseDetails
+                        ? entry.cfPremiseDetails.join(", ")
+                        : entry.cfPremises}
+                      ) = {entry.cfPremises}
+                      {" | "}
+                      CF Hasil: {entry.cfPremises} × {entry.cfRule} ={" "}
+                      <span className="font-bold text-amber-900">
+                        {entry.cfResult.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             }
