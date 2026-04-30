@@ -12,7 +12,7 @@ This system is designed to help **students** and **aspiring technopreneurs** eva
 
 - **Rule-Based Expert System**: All decisions are made based on IF-THEN rules defined by domain experts — no machine learning or statistical computation is involved.
 - **Forward Chaining (Data-Driven)**: All facts (user inputs) are collected through a conversational UI, then processed in a bottom-up manner (attributes → aspects → final decision).
-- The system **does not use** backward chaining, certainty factor, or machine learning.
+- **Certainty Factor (CF)**: The system implements Certainty Factor logic to quantify the confidence level of the feasibility decision.
 
 ### Decision Targets
 
@@ -28,11 +28,12 @@ The system produces a feasibility verdict in one of three categories:
 
 ## Key Features
 
-### Forward Chaining Engine
+### Forward Chaining Engine & Certainty Factor
 - Two-phase evaluation: attributes → aspects (intermediate), then aspects → final decision
 - 26 IF-THEN rules encoded as declarative data (not hardcoded logic)
-- Working memory to store facts and inference results
-- Inference trace (reasoning log) showing full transparency of which rules fired
+- Certainty Factor (CF) calculations to measure the degree of certainty in the final verdict
+- Working memory to store facts and inference results (including CF values)
+- Inference trace (reasoning log) showing full transparency of fired rules and CF math
 
 ### Conversational UI
 - **One question at a time** — no form dump, guided step by step
@@ -308,6 +309,14 @@ After this phase, working memory contains 4 aspect values:
 **Phase 2 — Final Decision Evaluation (Aspects → Decision)**
 
 The engine evaluates Rule Set 1. Rules are evaluated in order (R1 → R12), stopping at the first match. Rules with fewer conditions (R10, R12) function as wildcards — they only check a subset of aspects.
+
+### Certainty Factor (CF) Calculation
+
+The system calculates a Certainty Factor for each intermediate aspect and the final decision to measure the confidence of the verdict:
+1. **CF Fakta**: Pre-defined CF values assigned to each user's choice. Negative/pessimistic choices generally carry higher CF (e.g., 0.9) than optimistic ones (e.g., 0.7-0.8) to account for optimism bias.
+2. **CF Rule**: Pre-defined CF values assigned to each IF-THEN rule by the domain expert.
+3. **Calculation (AND rules)**: `CF(Conclusion) = min(CF Premises) × CF(Rule)`
+4. **Combination**: If multiple rules yield the same conclusion, their CFs are combined using the standard MYCIN `CFCOMBINE` formula.
 
 ### Working Memory
 
